@@ -4,21 +4,25 @@ import { Stomp } from "@stomp/stompjs";
 
 function App() {
   const [stompClient, setStompClient] = useState(null);
-  const [name, setName] = useState("");
   const [receivedMessage, setReceivedMessage] = useState(null);
-  const [roomId, setRoomId] = useState(1); // 추가된 부분: 방 ID 설정
-  const [memberId, setMemberId] = useState(2);
+  const [roomId, setRoomId] = useState(1); // Room ID
+  const [memberId, setMemberId] = useState(2); // Member ID
+  const [chatMessage, setChatMessage] = useState(""); // State for chat message input
 
   useEffect(() => {
-    // const socket = new SockJS("http://localhost:8081/ws");
-    const socket = new SockJS("http://15.164.104.128:8081/ws");
+    const socket = new SockJS("http://localhost:8081/ws");
+    // const socket = new SockJS("http://15.164.104.128:8081/ws");
     const stompClient = Stomp.over(socket);
     stompClient.connect({}, function (frame) {
       console.log("Connected: " + frame);
-      // 방 ID에 따라 메시지 구독 경로를 변경
       stompClient.subscribe(`/topic/rooms/${roomId}`, function (greeting) {
         console.log(greeting.body);
-        setReceivedMessage(JSON.parse(greeting.body).content); // 메시지 내용 업데이트
+        setReceivedMessage(JSON.parse(greeting.body).content); // Update message content
+      });
+      // Subscribe to chat messages as well
+      stompClient.subscribe(`/topic/rooms/${roomId}/chat`, function (message) {
+        console.log(message.body);
+        setReceivedMessage(JSON.parse(message.body).content); // Update message content for chat
       });
     });
     setStompClient(stompClient);
@@ -27,22 +31,40 @@ function App() {
         stompClient.disconnect();
       }
     };
-  }, [roomId]); // roomId가 변경될 때마다 useEffect가 다시 실행됩니다.
+  }, [roomId]); // Re-run useEffect when roomId changes.
 
-  const sendMessage = () => {
-    // 방 ID와 사용자 이름을 포함한 메시지를 전송합니다.
-    stompClient.send(`/app/rooms/${roomId}/${memberId}`, {});
+  const enterRoom = () => {
+    stompClient.send(`/app/rooms/${roomId}/${memberId}`, {}, JSON.stringify({}));
+  };
+
+  const sendChatMessage = () => {
+    // Construct the chat message payload
+    const chatRequest = { content: chatMessage };
+    stompClient.send(`/app/rooms/${roomId}/chat/${memberId}`, {}, JSON.stringify(chatRequest));
   };
 
   return (
     <div>
       <input
         type="text"
+        value={roomId}
+        onChange={(e) => setRoomId(e.target.value)}
+        placeholder="Enter room ID"
+      />
+      <input
+        type="text"
         value={memberId}
         onChange={(e) => setMemberId(e.target.value)}
-        placeholder="Enter your name"
+        placeholder="Enter member ID"
       />
-      <button onClick={sendMessage}>Send</button>
+      <button onClick={enterRoom}>Enter Room</button>
+      <input
+        type="text"
+        value={chatMessage}
+        onChange={(e) => setChatMessage(e.target.value)}
+        placeholder="Enter chat message"
+      />
+      <button onClick={sendChatMessage}>Send Chat Message</button>
       {receivedMessage && <div>Message: {receivedMessage}</div>}
     </div>
   );
