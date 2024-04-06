@@ -26,7 +26,6 @@ function App() {
       }
 
       const data = await response.json();
-      console.log("data: ", data);
 
       // 데이터를 chatId 기준으로 오름차순 정렬
       const sortedData = [...data.values].sort((a, b) => a.chatId - b.chatId);
@@ -47,17 +46,14 @@ function App() {
   };
 
   useEffect(() => {
-    const socket = new SockJS("http://localhost:8081/ws");
-    // const socket = new SockJS("http://15.164.104.128:8081/ws");
+    // const socket = new SockJS("http://localhost:8081/ws");
+    const socket = new SockJS("http://15.164.104.128:8081/ws");
     const stompClient = Stomp.over(socket);
     stompClient.connect({}, function (frame) {
-      console.log("Connected: " + frame);
       stompClient.subscribe(`/topic/rooms/${roomId}`, function (greeting) {
-        console.log(greeting.body);
         setReceivedMessage(JSON.parse(greeting.body).content); // Update message content
       });
       stompClient.subscribe(`/topic/rooms/${roomId}/chat`, function (message) {
-        console.log(message.body);
         const newMessage = JSON.parse(message.body);
         // 새 메시지를 chats 배열에 추가
         setChats(prevChats => [newMessage, ...prevChats]);
